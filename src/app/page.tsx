@@ -243,7 +243,7 @@ export default function HomePage() {
                 <li key={item.id} className={`job-item status-${item.status}`}>
                   {item.status === 'completed' && item.thumbnailUrl && (
 
-                    <Image src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" />
+                    <Image src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" width={60} height={60} />
                     // ถ้าจะใช้ Next/Image ต้อง config hostname ของ thumbnailUrl ใน next.config.js
                     // <Image src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" width={60} height={60} />
                   )}
