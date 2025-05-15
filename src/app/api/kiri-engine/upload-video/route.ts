@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
         const kiriFormData = new FormData();
         kiriFormData.append('videoFile', videoFile, videoFile.name);
         // ดึงค่าอื่นๆ จาก clientFormData ถ้ามีการส่งมา หรือใช้ค่า default
-        kiriFormData.append('modelQuality', clientFormData.get('modelQuality')?.toString() || '1'); // Medium
-        kiriFormData.append('textureQuality', clientFormData.get('textureQuality')?.toString() || '1'); // 2K
+        kiriFormData.append('modelQuality', clientFormData.get('modelQuality')?.toString() || '0'); // Low
+        kiriFormData.append('textureQuality', clientFormData.get('textureQuality')?.toString() || '0'); // 1K
         kiriFormData.append('fileFormat', clientFormData.get('fileFormat')?.toString() || 'glb');
         kiriFormData.append('isMask', clientFormData.get('isMask')?.toString() || '1');
         kiriFormData.append('textureSmoothing', clientFormData.get('textureSmoothing')?.toString() || '1');
