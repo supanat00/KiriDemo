@@ -8,8 +8,6 @@ export type JobStatus =
     | 'expired';
 
 export interface Job {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _id: any;
     id: string;             // KIRI Engine's serialize ID (Our primary unique key)
     videoName: string;
     modelName?: string;

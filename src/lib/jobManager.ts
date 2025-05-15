@@ -22,9 +22,9 @@ function normalizeAppJob(jobData: Job | WithId<Job>): Job {
         errorMessage: rest.errorMessage as string | undefined,
     };
     // If your app's Job type expects _id as a string (converted from ObjectId)
-    if (_id && typeof appJob._id === 'undefined' && _id instanceof ObjectId) {
+    if (_id && typeof appJob.id === 'undefined' && _id instanceof ObjectId) {
         // (appJob as any)._id = _id.toString(); // Example if Job type has _id: string
-    } else if (_id && typeof appJob._id === 'undefined') {
+    } else if (_id && typeof appJob.id === 'undefined') {
         // (appJob as any)._id = _id; // If Job type can take ObjectId or already string
     }
     // If Job type has no _id, this function effectively removes it.
