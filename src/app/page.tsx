@@ -1,13 +1,16 @@
+// src/app/page.tsx
 "use client";
 
 import React, { useState, useRef, ChangeEvent, useEffect, useCallback } from 'react';
-import Image from "next/image" // คุณ import Image แต่ไม่ได้ใช้ในโค้ดที่ให้มา ถ้าไม่ใช้ก็ลบได้
+// import Image from "next/image"; // Uncomment if you configure next/image for external URLs
 import { Plus, UploadCloud, Video as VideoIcon, RefreshCw, CheckCircle, AlertTriangle, Download, Eye, Loader2 } from 'lucide-react';
 import type { Job, ProcessingJobUI, CompletedItemUI } from '@/types/project';
 
-const formatDate = (date: Date | string | undefined): string => {
-  if (!date) return 'N/A';
-  return new Date(date).toLocaleString('th-TH', {
+const formatDate = (dateInput: Date | string | undefined): string => {
+  if (!dateInput) return 'N/A';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return 'Invalid Date';
+  return date.toLocaleString('th-TH', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -26,44 +29,54 @@ export default function HomePage() {
   const [isUploading, setIsUploading] = useState(false);
   const pollingIntervalsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
-  const fetchJobs = useCallback(async (showLoading: boolean = true) => {
-    if (showLoading) setIsLoading(true);
+  const fetchJobs = useCallback(async (showLoadingIndicator: boolean = true) => {
+    if (showLoadingIndicator) setIsLoading(true);
     console.log('[UI] Fetching all jobs...');
     try {
       const response = await fetch('/api/jobs');
       if (!response.ok) {
-        throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ message: `Failed to fetch jobs: ${response.statusText}` }));
+        throw new Error(errorData.message);
       }
       const fetchedJobs: Job[] = await response.json();
       const currentProcessing: ProcessingJobUI[] = [];
       const currentCompleted: CompletedItemUI[] = [];
+
       fetchedJobs.forEach(job => {
+        if (!job || !job.id || !job.status) { // Basic validation of job structure
+          console.warn("[UI] Received invalid job object:", job);
+          return;
+        }
         if (job.status === 'processing' || job.status === 'queuing' || job.status === 'uploading') {
           currentProcessing.push(job as ProcessingJobUI);
         } else if (job.status === 'completed' || job.status === 'failed' || job.status === 'expired') {
           currentCompleted.push(job as CompletedItemUI);
         }
       });
+
       setProcessingJobs(currentProcessing.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()));
       setCompletedItems(currentCompleted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
-      console.log('[UI] Jobs fetched and states updated.');
+      console.log('[UI] Jobs fetched and states updated. Processing:', currentProcessing.length, 'Completed/Failed:', currentCompleted.length);
     } catch (error) {
       console.error("[UI] Error fetching jobs:", error);
+      // Handle error display in UI if needed
     } finally {
-      if (showLoading) setIsLoading(false);
+      if (showLoadingIndicator) setIsLoading(false);
     }
-  }, []); // fetchJobs ไม่มี dependencies ภายนอก (นอกจาก setIsLoading ที่เป็น setter ซึ่งเสถียร)
+  }, []);
 
   const pollJobStatus = useCallback(async (jobId: string) => {
+    if (!jobId) return;
     console.log(`[UI] Polling status for job ${jobId}...`);
     try {
       const response = await fetch(`/api/kiri-engine/get-status/${jobId}`);
       if (!response.ok) {
-        console.error(`[UI] Failed to poll status for ${jobId}: ${response.statusText}`);
-        if (response.status === 404 && pollingIntervalsRef.current[jobId]) {
-          console.warn(`[UI] Job ${jobId} not found, stopping polling.`);
+        console.error(`[UI] Failed to poll status for ${jobId}: ${response.statusText} (${response.status})`);
+        if ((response.status === 404 || response.status === 500) && pollingIntervalsRef.current[jobId]) { // Stop polling on 404 or critical server error
+          console.warn(`[UI] Job ${jobId} not found or server error during poll, stopping polling.`);
           clearInterval(pollingIntervalsRef.current[jobId]);
           delete pollingIntervalsRef.current[jobId];
+          fetchJobs(false); // Fetch all jobs to ensure UI consistency
         }
         return;
       }
@@ -71,55 +84,59 @@ export default function HomePage() {
       console.log(`[UI] Polled status for ${jobId}:`, updatedJobFromServer.status);
 
       if (updatedJobFromServer.status === 'completed' || updatedJobFromServer.status === 'failed' || updatedJobFromServer.status === 'expired') {
-        console.log(`[UI] Job ${jobId} finished or failed. Fetching all jobs to update UI.`);
-        fetchJobs(false); // เรียก fetchJobs ที่ memoized
+        console.log(`[UI] Job ${jobId} reached final state: ${updatedJobFromServer.status}. Fetching all jobs.`);
+        fetchJobs(false);
         if (pollingIntervalsRef.current[jobId]) {
           clearInterval(pollingIntervalsRef.current[jobId]);
           delete pollingIntervalsRef.current[jobId];
-          console.log(`[UI] Stopped polling for job ${jobId}.`);
         }
       } else {
+        // Update only the specific job in the processing list to avoid full re-render if not necessary
         setProcessingJobs(prev =>
           prev.map(j => (j.id === jobId ? { ...j, ...updatedJobFromServer } as ProcessingJobUI : j))
         );
       }
     } catch (error) {
       console.error(`[UI] Error polling job ${jobId}:`, error);
+      // Optionally stop polling on certain errors
     }
-  }, [fetchJobs]); // <--- ลบ eslint-disable-next-line ออก, ใส่ fetchJobs ใน deps ถูกต้องแล้ว
-
+  }, [fetchJobs]);
 
   useEffect(() => {
-    fetchJobs();
-    return () => {
-      console.log('[UI] Clearing all polling intervals on unmount.');
+    fetchJobs(true); // Initial fetch with loading indicator
+    return () => { // Cleanup on unmount
       Object.values(pollingIntervalsRef.current).forEach(clearInterval);
       pollingIntervalsRef.current = {};
     };
-  }, [fetchJobs]); // <--- ลบ eslint-disable-next-line ออก, ใส่ fetchJobs ใน deps ถูกต้องแล้ว
+  }, [fetchJobs]); // fetchJobs is memoized, so this runs once on mount
 
-  useEffect(() => {
-    const currentPollingIds = Object.keys(pollingIntervalsRef.current);
-    const processingJobIds = processingJobs.map(job => job.id);
+  useEffect(() => { // Manages polling intervals
+    const currentPollingJobIds = Object.keys(pollingIntervalsRef.current);
+    const activeProcessingJobIds = processingJobs
+      .filter(job => job.status === 'processing' || job.status === 'queuing' || job.status === 'uploading')
+      .map(job => job.id);
 
-    currentPollingIds.forEach(jobId => {
-      if (!processingJobIds.includes(jobId) && pollingIntervalsRef.current[jobId]) {
-        console.log(`[UI] Job ${jobId} no longer processing, stopping its poll.`);
-        clearInterval(pollingIntervalsRef.current[jobId]);
-        delete pollingIntervalsRef.current[jobId];
+    // Stop polling for jobs no longer active or in processing list
+    currentPollingJobIds.forEach(jobId => {
+      if (!activeProcessingJobIds.includes(jobId)) {
+        if (pollingIntervalsRef.current[jobId]) {
+          console.log(`[UI] Stopping polling for job ${jobId} (no longer active processing).`);
+          clearInterval(pollingIntervalsRef.current[jobId]);
+          delete pollingIntervalsRef.current[jobId];
+        }
       }
     });
 
-    processingJobs.forEach(job => {
-      if (!(job.id in pollingIntervalsRef.current) && (job.status === 'processing' || job.status === 'queuing' || job.status === 'uploading')) {
-        console.log(`[UI] Starting polling for new/existing processing job ${job.id}`);
-        pollJobStatus(job.id);
-        pollingIntervalsRef.current[job.id] = setInterval(() => pollJobStatus(job.id), 20000);
+    // Start polling for new active processing jobs
+    activeProcessingJobIds.forEach(jobId => {
+      if (!pollingIntervalsRef.current[jobId]) {
+        console.log(`[UI] Starting polling for job ${jobId}.`);
+        pollJobStatus(jobId); // Initial poll
+        pollingIntervalsRef.current[jobId] = setInterval(() => pollJobStatus(jobId), 20000); // Poll every 20s
       }
     });
   }, [processingJobs, pollJobStatus]);
 
-  // ... (ส่วนที่เหลือของ handlers และ JSX เหมือนเดิม) ...
 
   const toggleActionMenu = () => setShowActionMenu(prev => !prev);
 
@@ -136,12 +153,9 @@ export default function HomePage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      const MAX_FILE_SIZE_MB = 200;
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        alert(`ไฟล์วิดีโอมีขนาดใหญ่เกินไป (สูงสุด ${MAX_FILE_SIZE_MB}MB)`);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
+      // Add file size check if needed based on KIRI Engine limits
+      // const MAX_FILE_SIZE_MB = 200;
+      // if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) { ... }
 
       console.log('[UI] File selected for processing:', file.name);
       const formData = new FormData();
@@ -153,7 +167,7 @@ export default function HomePage() {
         if (!response.ok) throw new Error(result.message || `Failed to upload video (status: ${response.status}).`);
         console.log('[UI] Upload successful, Job created:', result);
         alert(`ไฟล์ "${file.name}" ถูกส่งไปประมวลผลแล้ว! Job ID: ${result.jobId}`);
-        fetchJobs(false);
+        fetchJobs(false); // Refresh job list
       } catch (error) {
         console.error('[UI] Error uploading file:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during upload.';
@@ -173,20 +187,31 @@ export default function HomePage() {
   const handleViewDetails = (jobId: string) => {
     const model = completedItems.find(item => item.id === jobId && item.status === 'completed');
     if (model && model.modelUrl) {
-      alert(`จำลองการดูโมเดล 3D: ${model.modelUrl}`);
+      alert(`จำลองการดูโมเดล 3D จาก URL: ${model.modelUrl}`);
+      // Implement actual 3D viewer modal or page navigation here
     } else {
-      alert(`ดูรายละเอียด Job ID: ${jobId} (ยังไม่มี Preview หรือ Model URL)`);
+      alert(`ดูรายละเอียด Job ID: ${jobId} (ยังไม่มี Model URL หรือไม่ใช่สถานะ completed)`);
     }
   };
 
-  const handleDownloadModel = (modelUrl?: string) => {
-    if (modelUrl && modelUrl !== '#') {
-      alert(`กำลังดาวน์โหลดจาก: ${modelUrl}`);
-      window.open(modelUrl, '_blank');
-    } else {
-      alert('ไม่มีไฟล์ให้ดาวน์โหลด หรือ URL ไม่ถูกต้อง');
+  const handleDownloadModel = async (jobId: string) => {
+    // This function should call an API route that then calls KIRI's getModelZip API
+    alert(`(จำลอง) กำลังขอลิงก์ดาวน์โหลดสำหรับ Job ID: ${jobId}...`);
+    try {
+      // Example: const response = await fetch(`/api/kiri-engine/download-model/${jobId}`);
+      // const data = await response.json();
+      // if (response.ok && data.modelUrl) {
+      //   window.open(data.modelUrl, '_blank');
+      // } else {
+      //   throw new Error(data.message || 'Could not get download link.');
+      // }
+      console.log("TODO: Implement API call to get KIRI download link for job:", jobId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`ไม่สามารถดาวน์โหลดโมเดลได้: ${message}`);
     }
   };
+
 
   if (isLoading && processingJobs.length === 0 && completedItems.length === 0) {
     return (
@@ -220,7 +245,7 @@ export default function HomePage() {
                   <div className="job-info">
                     <span className="job-name">{job.videoName || 'กำลังประมวลผล...'}</span>
                     <span className="job-status-text">
-                      สถานะ: {job.status === 'queuing' ? 'รอคิว' : job.status === 'uploading' ? 'กำลังอัปโหลด (KIRI)' : 'กำลังสร้างโมเดล...'}
+                      สถานะ: {job.status === 'queuing' ? 'รอคิว' : job.status === 'uploading' ? 'กำลังอัปโหลด' : 'กำลังสร้างโมเดล...'}
                     </span>
                     <span className="job-time">ส่งเมื่อ: {formatDate(job.submittedAt)}</span>
                   </div>
@@ -242,10 +267,8 @@ export default function HomePage() {
               {completedItems.map(item => (
                 <li key={item.id} className={`job-item status-${item.status}`}>
                   {item.status === 'completed' && item.thumbnailUrl && (
-
-                    <Image src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" width={60} height={60} />
-                    // ถ้าจะใช้ Next/Image ต้อง config hostname ของ thumbnailUrl ใน next.config.js
-                    // <Image src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" width={60} height={60} />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.thumbnailUrl} alt={String(item.modelName || item.videoName)} className="job-thumbnail" />
                   )}
                   <div className="job-info">
                     <span className="job-name">{item.modelName || item.videoName || 'โปรเจกต์ไม่มีชื่อ'}</span>
@@ -269,11 +292,9 @@ export default function HomePage() {
                         <button onClick={() => handleViewDetails(item.id)} title="ดูโมเดล 3D (จำลอง)">
                           <Eye size={18} />
                         </button>
-                        {item.modelUrl && (
-                          <button onClick={() => handleDownloadModel(item.modelUrl)} title="ดาวน์โหลดโมเดล">
-                            <Download size={18} />
-                          </button>
-                        )}
+                        <button onClick={() => handleDownloadModel(item.id)} title="ดาวน์โหลดโมเดล">
+                          <Download size={18} />
+                        </button>
                       </>
                     )}
                     {(item.status === 'failed' || item.status === 'expired') && <AlertTriangle size={24} className="status-icon error-icon" />}
@@ -317,7 +338,7 @@ export default function HomePage() {
         type="file"
         ref={fileInputRef}
         style={{ display: 'none' }}
-        accept="video/*" // Focus on video only for now
+        accept="video/*" // Focus on video only
         onChange={handleFileSelected}
       />
     </div>

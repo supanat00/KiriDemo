@@ -1,24 +1,29 @@
 // src/types/project.ts
-
-// ใช้ JobStatus จาก jobStore.ts หรือนิยามใหม่ที่นี่ถ้าต้องการ
-export type JobStatus = 'processing' | 'completed' | 'failed' | 'queuing' | 'uploading' | 'expired';
+export type JobStatus =
+    | 'uploading'
+    | 'queuing'
+    | 'processing'
+    | 'completed'
+    | 'failed'
+    | 'expired';
 
 export interface Job {
-    id: string;
-    videoName: string; // จะใช้ videoName เสมอในตอนแรก
-    modelName?: string; // อาจจะตั้งได้ทีหลัง หรือ KIRI กำหนด
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _id: any;
+    id: string;             // KIRI Engine's serialize ID (Our primary unique key)
+    videoName: string;
+    modelName?: string;
     status: JobStatus;
     submittedAt: Date;
     updatedAt: Date;
-    errorMessage?: string;
+    completedAt?: Date;
     modelUrl?: string;
     thumbnailUrl?: string;
-    completedAt?: Date;
+    errorMessage?: string;
 }
 
-// Type ที่เราอาจจะใช้ใน UI state โดยเฉพาะ
 export interface ProcessingJobUI extends Job {
-    status: 'processing' | 'queuing' | 'uploading';
+    status: 'uploading' | 'queuing' | 'processing';
 }
 
 export interface CompletedItemUI extends Job {
