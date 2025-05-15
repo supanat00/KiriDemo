@@ -7,7 +7,7 @@ export async function GET() {
         const jobs = await getAllJobs();
         return NextResponse.json(jobs, { status: 200 });
     } catch (error) {
-        console.error('[API GetJobs] Error:', error);
+        console.error('[API GetJobss] Error:', error);
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ message: `Failed to retrieve jobs: ${message}` }, { status: 500 });
     }
