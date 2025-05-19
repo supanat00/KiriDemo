@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model ModelScan {
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  serialize      String  @unique
+  name           String
+  status         Int // -1:Uploading, 0:Processing, 1:Failed, 2:Successful, 3:Queuing, 4:Expired
+  calculateType  Int? // 1:Photo Scan, 2:Featureless, 3:3DGS (จาก KIRI Response)
+  fileFormatUsed String? // Format ที่ส่งไปให้ KIRI ตอนสร้าง (เช่น "OBJ", "GLB")
+
+  // Parameters ที่ใช้ตอนสร้าง (Optional, แต่มีประโยชน์ถ้าต้องการแสดงผลหรือสร้างซ้ำ)
+  modelQuality     Int?
+  textureQuality   Int?
+  isMask           Boolean? // หรือ Int ถ้า KIRI ใช้ Int
+  textureSmoothing Boolean? // หรือ Int
+  isMesh3dgs       Boolean? // หรือ Int (สำหรับ isMesh ของ 3DGS)
+
+  createdAt DateTime @default(now()) // วันที่ Record นี้ถูกสร้างใน DB ของเรา
+  updatedAt DateTime @updatedAt // วันที่ Record นี้ถูกอัปเดตล่าสุด
+
+  kiriRawWebhookPayload Json? // เก็บ Payload ล่าสุดจาก Webhook
+  kiriRawCreateResponse Json? // เก็บ Response ตอน Create Task จาก KIRI
+
+  previewUrl String? // URL สำหรับ 3D Preview (อาจจะเป็น GLB/GLTF ที่คุณจัดการเอง)
+  // downloadUrl ไม่ต้องเก็บถาวร เพราะ Link มีอายุจำกัด
+}
