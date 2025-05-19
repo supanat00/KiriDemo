@@ -1,77 +1,80 @@
 // src/components/dashboard/ModelCard.tsx
 import StatusBadge from './StatusBadge';
-import { ModelItem } from '@/types/scanTypes';
-import { EyeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image'; // For placeholder
+import { ModelItem } from '@/types/scanTypes'; // Import จากไฟล์ Types ใหม่
+import { InformationCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'; // เปลี่ยน EyeIcon เป็น InformationCircleIcon
+// import Image from 'next/image'; // ไม่จำเป็นแล้วถ้าไม่แสดง Thumbnail จาก previewUrl
 
 interface ModelCardProps {
     model: ModelItem;
-    onPreview: () => void;
+    onViewDetails: () => void; // เปลี่ยนชื่อ Prop จาก onPreview
     onRefreshStatus: () => void;
-    refreshingSerializeId?: string | null; // New prop
+    refreshingSerializeId?: string | null;
 }
 
-export default function ModelCard({ model, onPreview, onRefreshStatus }: ModelCardProps) {
-    const canPreview = model.status === 2 && model.previewUrl;
+export default function ModelCard({ model, onViewDetails, onRefreshStatus, refreshingSerializeId }: ModelCardProps) {
+    // console.log(`[ModelCard] Data for "${model.name}": Status = ${model.status}`);
 
-    const isProcessing = model.status === -1 || model.status === 0 || model.status === 3;
+    // ปุ่ม "View Details" จะ Enable เมื่อโมเดลประมวลผลสำเร็จ
+    // หรืออาจจะ Enable ในสถานะอื่นด้วยถ้าต้องการให้ดู Details ได้ (เช่น Failed, Expired)
+    const canViewDetails = model.status === 2 || model.status === 1 || model.status === 4; // Successful, Failed, Expired
+
+    const isCurrentlyProcessing = model.status === -1 || model.status === 0 || model.status === 3;
+    const showRefreshButton = isCurrentlyProcessing || model.status === 1 || model.status === 4; // แสดงปุ่ม Refresh ถ้ากำลัง Process, Failed, หรือ Expired
+    const isThisCardRefreshing = refreshingSerializeId === model.serialize;
 
     return (
-        <div className="bg-slate-800 rounded-lg shadow-xl overflow-hidden flex flex-col transition-all duration-300 hover:shadow-cyan-500/30 hover:scale-[1.02]">
-            {/* Placeholder for Thumbnail - Replace with actual thumbnail if available */}
-            <div className="w-full h-48 bg-slate-700 flex items-center justify-center">
-                {/* Example: Use a generic 3D icon or a placeholder image */}
-                {model.previewUrl && model.status === 2 ? (
-                    <Image src={`/placeholder-thumbnail.png`} alt={model.name} width={192} height={192} className="object-cover opacity-80" /> // Replace with actual thumbnail
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 text-slate-500">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-                    </svg>
-                )}
+        <div className="bg-slate-800 rounded-lg shadow-xl overflow-hidden flex flex-col transition-all duration-300 hover:shadow-cyan-500/30 hover:scale-[1.02] min-h-[360px] sm:min-h-[380px]">
+            {/* Placeholder Thumbnail Area */}
+            <div className="w-full h-40 sm:h-48 bg-slate-700 flex items-center justify-center border-b border-slate-700/50">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 sm:w-20 sm:h-20 text-slate-500">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                </svg>
             </div>
 
-            <div className="p-5 flex-grow flex flex-col">
-                <h3 className="text-lg font-semibold text-gray-100 mb-1 truncate" title={model.name}>
+            {/* Card Content */}
+            <div className="p-4 sm:p-5 flex-grow flex flex-col">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-100 mb-1 truncate" title={model.name}>
                     {model.name}
                 </h3>
-                <p className="text-xs text-slate-400 mb-3">Created: {model.createdAt}</p>
-                <div className="mb-4">
+                <p className="text-xs text-slate-400 mb-3">
+                    Created: {model.createdAt}
+                </p>
+                <div className="mb-3 sm:mb-4">
                     <StatusBadge status={model.status} />
                 </div>
-                <p className="text-xs text-slate-500 mb-4 truncate">Serialize: {model.serialize}</p>
+                <p className="text-xs text-slate-500 mb-3 sm:mb-4 truncate" title={model.serialize}>
+                    ID: {model.serialize}
+                </p>
 
-                <div className="mt-auto space-y-2">
+                {/* Action Buttons */}
+                <div className="mt-auto space-y-2 pt-2">
                     <button
-                        onClick={onPreview}
-                        disabled={!canPreview}
-                        className={`w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm 
-                        ${canPreview
-                                ? 'text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-cyan-500'
-                                : 'text-slate-400 bg-slate-700 cursor-not-allowed'
+                        onClick={onViewDetails}
+                        disabled={!canViewDetails || isThisCardRefreshing}
+                        className={`w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors duration-150
+                        ${canViewDetails && !isThisCardRefreshing
+                                ? 'text-white bg-sky-600 hover:bg-sky-500 focus:ring-sky-500'
+                                : 'text-slate-500 bg-slate-700 cursor-not-allowed opacity-60'
                             } 
                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800`}
                     >
-                        <EyeIcon className="h-5 w-5 mr-2" />
-                        Preview Model
+                        <InformationCircleIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                        View Details
                     </button>
-                    {/* Download button (optional, could be inside preview modal) */}
-                    {/* {canDownload && (
-            <a
-              href={model.downloadUrl}
-              download
-              className="w-full inline-flex items-center justify-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md text-slate-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-cyan-500"
-            >
-              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-              Download
-            </a>
-          )} */}
-                    {isProcessing && (
+
+                    {showRefreshButton && (
                         <button
                             onClick={onRefreshStatus}
-                            className="w-full inline-flex items-center justify-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md text-slate-300 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-cyan-500"
+                            disabled={isThisCardRefreshing}
+                            className={`w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-600 text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors duration-150
+                          ${isThisCardRefreshing
+                                    ? 'text-slate-500 bg-slate-600 cursor-wait'
+                                    : 'text-slate-300 bg-slate-700 hover:bg-slate-600 focus:ring-cyan-500'
+                                }
+                          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800`}
                         >
-                            <ArrowPathIcon className="h-5 w-5 mr-2" />
-                            Refresh Status
+                            <ArrowPathIcon className={`h-4 w-4 sm:h-5 sm:w-5 mr-2 ${isThisCardRefreshing ? 'animate-spin' : ''}`} />
+                            {isThisCardRefreshing ? 'Refreshing...' : 'Refresh Status'}
                         </button>
                     )}
                 </div>

@@ -4,12 +4,12 @@ import { ModelItem } from '@/types/scanTypes'; // Import ModelItem type
 
 interface ModelListProps {
     models: ModelItem[];
-    onPreview: (model: ModelItem) => void;
+    onViewDetails: (model: ModelItem) => void;
     onRefreshStatus: (serialize: string) => void;
     refreshingSerializeId?: string | null; // New prop
 }
 
-export default function ModelList({ models, onPreview, onRefreshStatus }: ModelListProps) {
+export default function ModelList({ models, onViewDetails, onRefreshStatus }: ModelListProps) {
     if (models.length === 0) {
         return (
             <div className="text-center py-12">
@@ -28,7 +28,7 @@ export default function ModelList({ models, onPreview, onRefreshStatus }: ModelL
                 <ModelCard
                     key={model.id}
                     model={model}
-                    onPreview={() => onPreview(model)}
+                    onViewDetails={() => onViewDetails(model)}
                     onRefreshStatus={() => onRefreshStatus(model.serialize)}
                 />
             ))}

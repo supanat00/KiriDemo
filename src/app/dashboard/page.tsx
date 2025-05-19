@@ -10,8 +10,8 @@ import { ModelItem, mapPrismaScanToModelItem } from '@/types/scanTypes';
 
 
 export default function ScansPage() {
-    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState<ModelItem | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedModelForDetail, setSelectedModelForDetail] = useState<ModelItem | null>(null);
     const [models, setModels] = useState<ModelItem[]>([]); // เริ่มจาก Array ว่าง
     const [isLoading, setIsLoading] = useState(true); // isLoading สำหรับการโหลดข้อมูลทั้งหมด
     const [isRefreshingSingle, setIsRefreshingSingle] = useState<string | null>(null); // serialize ID ของโมเดลที่กำลัง Refresh เดี่ยว
@@ -77,9 +77,9 @@ export default function ScansPage() {
         }
     }, []); // No dependencies needed if it uses setModels with a function
 
-    const handleOpenPreview = (model: ModelItem) => {
-        setSelectedModel(model);
-        setIsPreviewModalOpen(true);
+    const handleOpenModelDetails = (model: ModelItem) => { // เปลี่ยนชื่อฟังก์ชัน
+        setSelectedModelForDetail(model);
+        setIsDetailModalOpen(true);
     };
 
     return (
@@ -113,18 +113,18 @@ export default function ScansPage() {
                 {models.length > 0 && (
                     <ModelList
                         models={models}
-                        onPreview={handleOpenPreview}
+                        onViewDetails={handleOpenModelDetails}
                         onRefreshStatus={refreshSingleModelStatus}
                         refreshingSerializeId={isRefreshingSingle} // Pass this down to ModelCard
                     />
                 )}
             </div>
 
-            {isPreviewModalOpen && selectedModel && (
+            {isDetailModalOpen && selectedModelForDetail && (
                 <ModelPreviewModal
-                    isOpen={isPreviewModalOpen}
-                    onClose={() => setIsPreviewModalOpen(false)}
-                    model={selectedModel}
+                    isOpen={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    model={selectedModelForDetail}
                 />
             )}
 

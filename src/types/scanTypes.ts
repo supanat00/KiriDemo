@@ -7,9 +7,8 @@ export interface ModelItem {
     name: string;
     status: -1 | 0 | 1 | 2 | 3 | 4;
     createdAt: string; // Formatted date string
-    previewUrl?: string;
-    calculateType?: number;   // Type เป็น number และ Optional
-    fileFormatUsed?: string; // Type เป็น string และ Optional
+    calculateType?: number | null;   // Type เป็น number และ Optional
+    fileFormatUsed?: string | null; // Type เป็น string และ Optional
 }
 
 export const mapPrismaScanToModelItem = (dbScan: PrismaModelScanType): ModelItem => {
@@ -23,9 +22,8 @@ export const mapPrismaScanToModelItem = (dbScan: PrismaModelScanType): ModelItem
             month: '2-digit',
             day: '2-digit',
         }),
-        previewUrl: dbScan.previewUrl || undefined,
-        calculateType: dbScan.calculateType ?? undefined, // ใช้ Nullish Coalescing ถ้าเป็น Optional ใน DB
-        fileFormatUsed: dbScan.fileFormatUsed ?? undefined, // ใช้ Nullish Coalescing
+        calculateType: dbScan.calculateType ?? null, // ใช้ Nullish Coalescing ถ้าเป็น Optional ใน DB
+        fileFormatUsed: dbScan.fileFormatUsed ?? null, // ใช้ Nullish Coalescing
     };
 };
 
