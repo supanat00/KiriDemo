@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
         const modelTitle = formData.get('modelTitle') as string | null;
 
         // ดึง Parameters เฉพาะสำหรับ Photo Scan (Video)
-        const modelQuality = formData.get('modelQuality') as string || "1"; // Default: Medium
-        const textureQuality = formData.get('textureQuality') as string || "1"; // Default: 2K
+        const modelQuality = formData.get('modelQuality') as string || "0"; // Default: High
+        const textureQuality = formData.get('textureQuality') as string || "0"; // Default: 4K
         const fileFormat = formData.get('fileFormat') as string || "GLB";    // Default: GLB (ดีสำหรับการ Preview)
-        const isMask = formData.get('isMask') as string || "1";              // Default: Turn ON Auto Object Masking
-        const textureSmoothing = formData.get('textureSmoothing') as string || "1"; // Default: Turn ON Texture Smoothing
+        const isMask = formData.get('isMask') as string || "0";              // Default: Turn ON Auto Object Masking
+        const textureSmoothing = formData.get('textureSmoothing') as string || "0"; // Default: Turn Off Texture Smoothing
 
         // 4. Validate Input พื้นฐาน
         if (!videoFile) {
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
                     fileFormatUsed: fileFormat,
                     modelQuality: parseInt(modelQuality, 10),
                     textureQuality: parseInt(textureQuality, 10),
-                    isMask: isMask === "1", // แปลงเป็น Boolean
-                    textureSmoothing: textureSmoothing === "1", // แปลงเป็น Boolean
+                    isMask: isMask === "0", // แปลงเป็น Boolean
+                    textureSmoothing: textureSmoothing === "0", // แปลงเป็น Boolean
                     createdAt: new Date(), // Prisma จะจัดการให้ถ้ามี @default(now())
                     updatedAt: new Date(), // Prisma จะจัดการให้ถ้ามี @updatedAt
                     kiriRawCreateResponse: kiriData, // (Optional) เก็บ Raw Response จาก KIRI ตอนสร้าง

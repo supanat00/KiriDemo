@@ -13,8 +13,8 @@ interface UploadVideoModalProps {
 
 const MAX_FILE_SIZE_MB = 100;
 const MAX_VIDEO_DURATION_SECONDS = 3 * 60;
-const MAX_VIDEO_WIDTH = 1920;
-const MAX_VIDEO_HEIGHT = 1080;
+const MAX_VIDEO_WIDTH = 1080;
+const MAX_VIDEO_HEIGHT = 1920;
 
 export default function UploadVideoModal({ isOpen, onClose, onUpload }: UploadVideoModalProps) {
     const [file, setFile] = useState<File | null>(null);
